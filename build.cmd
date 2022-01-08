@@ -1,0 +1,1 @@
+pyinstaller --noconfirm --onefile --windowed --noupx --uac-admin --add-binary "C:/Users/alex2/Documents/Projects/pydockmonitor/libusb-1.0.dll;."  "C:/Users/alex2/Documents/Projects/pydockmonitor/main.py" -n dock_monitor
