@@ -1,5 +1,25 @@
 import usb1, time, subprocess, yaml, click, os
 import win32com.client as win32
+import pywintypes
+import win32api
+import win32con
+from screeninfo import get_monitors
+
+
+def ResetResolution():
+    m = [x for x in get_monitors() if x.is_primary == True]
+    (x, y) = (m[0].width, m[0].height)
+
+    devmode = pywintypes.DEVMODEType()
+    devmode.PelsWidth = 1280
+    devmode.PelsHeight = 1024
+
+    devmode.Fields = win32con.DM_PELSWIDTH | win32con.DM_PELSHEIGHT
+    win32api.ChangeDisplaySettings(devmode, 0)
+    devmode.PelsWidth = x
+    devmode.PelsHeight = y
+    win32api.ChangeDisplaySettings(devmode, 0)
+
 
 root_path = os.path.join(os.environ['APPDATA'], 'dock_monitor')
 os.makedirs(root_path, exist_ok=True)
@@ -36,6 +56,7 @@ def on_undocked():
     subprocess.run(f'SoundVolumeView.exe  /SetDefault "{config["undock_multimedia"]}" 2')
     subprocess.run(f'SoundVolumeView.exe  /SetDefault "{config["undock_multimedia"]}" 1')
     subprocess.run(f'SoundVolumeView.exe  /SetDefault "{config["undock_multimedia"]}" 0')
+    ResetResolution()
     toggle_desktop()
 
 
