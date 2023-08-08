@@ -7,6 +7,9 @@ import win32api
 import win32con
 from screeninfo import get_monitors
 import time, retry
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
 
 
 def ResetResolution():
@@ -50,19 +53,11 @@ def on_docked():
         subprocess.run(f'pnputil /restart-device "{d}"', shell=True)
 
     subprocess.run(f'SoundVolumeView.exe  /LoadProfile docked_profile')
-    # subprocess.run(f'SoundVolumeView.exe  /Enable "{config["dock_comm"]}"', cwd=root_path)
-    # subprocess.run(f'SoundVolumeView.exe  /SetDefault "{config["dock_comm"]}" 2', cwd=root_path)
-    # subprocess.run(f'SoundVolumeView.exe  /SetDefault "{config["dock_multimedia"]}" 1', cwd=root_path)
-    # subprocess.run(f'SoundVolumeView.exe  /SetDefault "{config["dock_multimedia"]}" 0', cwd=root_path)
 
 
 def on_undocked():
     logging.debug("UnDocked")
     subprocess.run(f'SoundVolumeView.exe  /LoadProfile undocked_profile')
-    # subprocess.run(f'SoundVolumeView.exe  /Disable "{config["dock_comm"]}"', cwd=root_path)
-    # subprocess.run(f'SoundVolumeView.exe  /SetDefault "{config["undock_multimedia"]}" 2', cwd=root_path)
-    # subprocess.run(f'SoundVolumeView.exe  /SetDefault "{config["undock_multimedia"]}" 1', cwd=root_path)
-    # subprocess.run(f'SoundVolumeView.exe  /SetDefault "{config["undock_multimedia"]}" 0', cwd=root_path)
     ResetResolution()
 
 
@@ -74,11 +69,11 @@ def main_loop():
             l = []
             if not first_run:
                 l = context.getDeviceList()
-            time.sleep(1)
+            time.sleep(2)
             l2 = context.getDeviceList()
             l3 = list(set(l2) - set(l))
             l4 = list(set(l) - set(l2))
-            #logging.debug(f'{l2} \n {l3} \n {l4}')
+            # logging.debug(f'{l2} \n {l3} \n {l4}')
             docked = None
             first_run = False
             for d in l3:
