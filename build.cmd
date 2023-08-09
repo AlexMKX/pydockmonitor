@@ -1,1 +1,1 @@
-pyinstaller --noconfirm --onefile --windowed --noupx --uac-admin --add-binary "./libusb-1.0.dll;."  "./main.py" -n dock_monitor
+pyinstaller --noconfirm --onefile --noupx --uac-admin --add-binary "./libusb-1.0.dll;." --add-binary "./SoundVolumeView.exe;."  "./main.py" -n pydockmonitor
