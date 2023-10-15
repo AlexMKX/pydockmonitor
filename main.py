@@ -57,45 +57,52 @@ def on_docked():
     for d in config.get('restart_devices', []):
         subprocess.run(f'pnputil /restart-device "{d}"', shell=True)
 
-    subprocess.run(f'SoundVolumeView.exe  /LoadProfile docked_profile')
+    result = subprocess.run(f'SoundVolumeView.exe  /LoadProfile docked_profile.spr')
+    logger.debug(f"Run result {result.returncode}")
 
 
 def on_undocked():
     logger.debug("UnDocked")
-    subprocess.run(f'SoundVolumeView.exe  /LoadProfile undocked_profile')
+    result = subprocess.run(f'SoundVolumeView.exe  /LoadProfile undocked_profile.spr')
+    logger.debug(f"Run result {result.returncode}")
     ResetResolution()
+
+
+def current_dev_list() -> set:
+    with usb1.USBContext() as context:
+        dev_list = [get_dev_name(d) for d in context.getDeviceList()]
+    return set(dev_list)
 
 
 def main_loop():
     first_run = True
     logger.debug("starting loop")
-    with usb1.USBContext() as context:
-        while True:
-            l = []
-            if not first_run:
-                l = context.getDeviceList()
+    dock_devices = set(config['dock_device'])
+
+    dev_list_before = current_dev_list()
+    docked_before = False
+    while True:
+        dev_list_current = current_dev_list()
+        if dev_list_current == dev_list_before:
             time.sleep(2)
-            l2 = context.getDeviceList()
-            l3 = list(set(l2) - set(l))
-            l4 = list(set(l) - set(l2))
-            # logging.debug(f'{l2} \n {l3} \n {l4}')
-            docked = None
-            first_run = False
-            for d in l3:
-                logger.debug(f'inserted : {get_dev_name(d)}')
-                if get_dev_name(d) in config['dock_device']:
-                    docked = True
-                    break
-            for d in l4:
-                logger.debug(f'removed : {get_dev_name(d)}')
-                if get_dev_name(d) in config['dock_device']:
-                    docked = False
-                    break
-            if docked is not None:
-                if docked:
-                    on_docked()
-                else:
-                    on_undocked()
+            continue
+        logger.debug(f"Device list changed.")
+        removed = dev_list_before - dev_list_current
+        logger.debug(f"Removed {removed}")
+        added = dev_list_current - dev_list_before
+        logger.debug(f"Added {added}")
+        docked_dev_status = dock_devices.intersection(dev_list_current)
+        logger.debug(f"Docked devices {docked_dev_status}")
+        docked = len(docked_dev_status) > 0
+        if docked_before != docked:
+            logger.debug("Dock state changed")
+            if docked:
+                time.sleep(10)
+                on_docked()
+            else:
+                on_undocked()
+        docked_before = docked
+        dev_list_before = dev_list_current
 
 
 # @click.group()
@@ -112,10 +119,10 @@ def detect():
         logger.debug([get_dev_name(x) for x in difference])
         click.echo("Configure sound settings for docked and press enter")
         input()
-        subprocess.run(f'SoundVolumeView.exe  /SaveProfile "docked_profile"')
+        subprocess.run(f'SoundVolumeView.exe  /SaveProfile "docked_profile.spr"')
         click.echo("Configure sound settings for undocked and press enter")
         input()
-        subprocess.run(f'SoundVolumeView.exe  /SaveProfile "undocked_profile"')
+        subprocess.run(f'SoundVolumeView.exe  /SaveProfile "undocked_profile.spr"')
 
 
 @click.group(invoke_without_command=True)
