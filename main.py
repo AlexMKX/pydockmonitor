@@ -150,7 +150,9 @@ def create_rotating_log(path):
 # ----------------------------------------------------------------------
 if __name__ == '__main__':
     import sys
+    import ctypes
 
+    ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
     # ResetResolution()
 
     root_path = os.path.join(os.environ['APPDATA'], 'dock_monitor')
