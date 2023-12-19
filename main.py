@@ -83,14 +83,17 @@ def main_loop():
     docked_before = False
     while True:
         dev_list_current = current_dev_list()
-        if dev_list_current == dev_list_before:
-            time.sleep(2)
-            continue
-        logger.debug(f"Device list changed.")
-        removed = dev_list_before - dev_list_current
-        logger.debug(f"Removed {removed}")
-        added = dev_list_current - dev_list_before
-        logger.debug(f"Added {added}")
+        if not first_run:
+            if dev_list_current == dev_list_before:
+                time.sleep(2)
+                continue
+            logger.debug(f"Device list changed.")
+            removed = dev_list_before - dev_list_current
+            logger.debug(f"Removed {removed}")
+            added = dev_list_current - dev_list_before
+            logger.debug(f"Added {added}")
+        else:
+            first_run = False
         docked_dev_status = dock_devices.intersection(dev_list_current)
         logger.debug(f"Docked devices {docked_dev_status}")
         docked = len(docked_dev_status) > 0
@@ -153,7 +156,6 @@ if __name__ == '__main__':
     import ctypes
 
     ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
-    # ResetResolution()
 
     root_path = os.path.join(os.environ['APPDATA'], 'dock_monitor')
     config = load_config(root_path)
