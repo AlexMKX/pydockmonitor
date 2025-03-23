@@ -1,8 +1,7 @@
 name: Build and Release
 
 on:
-  schedule:
-    - cron: '0 0 * * *'  # Запуск каждый день в полночь UTC
+  workflow_dispatch:  # Запуск только вручную
 
 jobs:
   build:
