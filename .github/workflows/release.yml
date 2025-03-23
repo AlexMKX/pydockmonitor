@@ -42,6 +42,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/pydockmonitor.exe
-        asset_name: pydockmonitor.exe
+        asset_path: ./dist/pydockmonitor_console.exe
+        asset_name: pydockmonitor_console.exe
         asset_content_type: application/octet-stream 

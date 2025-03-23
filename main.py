@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import time
 import sys
+import atexit
 from pathlib import Path
 import psutil
 from retrying import retry
@@ -16,6 +17,10 @@ import yaml
 from pydantic_settings import BaseSettings
 from screeninfo import get_monitors
 import win32com.shell.shell as shell
+import win32gui
+import win32process
+import ctypes
+from datetime import datetime
 
 from logger import setup_logger
 from usb_manager import USBManager
@@ -28,6 +33,14 @@ logger = setup_logger()
 app_dir = os.path.join(os.getenv('APPDATA'), 'dock_monitor')
 os.makedirs(app_dir, exist_ok=True)
 os.chdir(app_dir)
+
+# Windows Job Object constants
+JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION = 0x00000400
+JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK = 0x00001000
+
+# Global variable to store child process
+child_process = None
 
 class Config(BaseSettings):
     dock_device: list[str]
@@ -110,52 +123,134 @@ def on_undocked(config: Config, audio_manager: AudioManager):
     if config.reset_resolution:
         reset_resolution()
 
-def main_loop(config: Config):
-    """Main program loop"""
-    logger.info("Starting USB device monitoring")
-    
-    usb_manager = USBManager()
-    audio_manager = AudioManager()
-    
-    dock_devices = set(config.dock_device)
-    dev_list_before = usb_manager.get_current_devices()
-    docked_before = False
-    first_run = True
+def is_hidden_mode():
+    """Check if application is running in hidden mode"""
+    return len(sys.argv) > 1 and sys.argv[1] == 'hidden'
 
-    while True:
+def is_console_version():
+    """Check if running console version"""
+    return os.path.basename(sys.executable).lower() == 'pydockmonitor_console.exe'
+
+def create_job_object():
+    """Create Windows Job Object for process management"""
+    try:
+        job = win32api.CreateJobObject(None, "PyDockMonitorJob")
+        info = win32api.QueryInformationJobObject(job, win32con.JobObjectExtendedLimitInformation)
+        info['BasicLimitInformation']['LimitFlags'] = (
+            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE |
+            JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION |
+            JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK
+        )
+        win32api.SetInformationJobObject(job, win32con.JobObjectExtendedLimitInformation, info)
+        return job
+    except Exception as e:
+        logger.error(f"Error creating job object: {e}")
+        return None
+
+def assign_process_to_job(job, process):
+    """Assign process to job object"""
+    try:
+        win32api.AssignProcessToJobObject(job, process.handle)
+        return True
+    except Exception as e:
+        logger.error(f"Error assigning process to job: {e}")
+        return False
+
+def cleanup_child_process():
+    """Cleanup function to terminate child process"""
+    global child_process
+    if child_process:
         try:
-            dev_list_current = usb_manager.get_current_devices()
+            # Get all child processes
+            parent = psutil.Process(child_process.pid)
+            children = parent.children(recursive=True)
             
-            if not first_run and dev_list_current == dev_list_before:
-                time.sleep(2)
-                continue
-
-            if not first_run:
-                logger.debug("Device list changed")
-                removed = dev_list_before - dev_list_current
-                added = dev_list_current - dev_list_before
-                logger.debug(f"Removed: {removed}")
-                logger.debug(f"Added: {added}")
-
-            docked_dev_status = dock_devices.intersection(dev_list_current)
-            logger.debug(f"Dock device status: {docked_dev_status}")
-            docked = bool(docked_dev_status)
-
-            if docked_before != docked or first_run:
-                logger.info("Docking station state changed")
-                if docked:
-                    time.sleep(10)  # Give time for device initialization
-                    on_docked(config, audio_manager)
-                else:
-                    on_undocked(config, audio_manager)
-
-            docked_before = docked
-            dev_list_before = dev_list_current
-            first_run = False
+            # Terminate all child processes
+            for child in children:
+                try:
+                    child.terminate()
+                except psutil.NoSuchProcess:
+                    pass
             
+            # Terminate parent process
+            child_process.terminate()
+            try:
+                child_process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                child_process.kill()
+            
+            logger.info("Child process terminated successfully")
         except Exception as e:
-            logger.error(f"Error in main loop: {e}")
-            time.sleep(5)  # Pause before retry
+            logger.error(f"Error terminating child process: {e}")
+
+def main():
+    """Main function"""
+    try:
+        # If running console version, check for commands
+        if is_console_version():
+            if len(sys.argv) > 1 and sys.argv[1] == 'install':
+                install()
+                return
+            elif len(sys.argv) > 1 and sys.argv[1] == 'detect':
+                detect()
+                return
+            elif len(sys.argv) > 1 and sys.argv[1] == 'run':
+                # Run non-console version
+                non_console_exe = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pydockmonitor.exe')
+                if os.path.exists(non_console_exe):
+                    global child_process
+                    # Start process
+                    child_process = subprocess.Popen([non_console_exe])
+                    # Register cleanup function
+                    atexit.register(cleanup_child_process)
+                    logger.info("Started non-console version")
+                else:
+                    logger.error("Non-console executable not found")
+                return
+        
+        # Load configuration
+        config = load_config('config.yml')
+        
+        # Initialize managers
+        usb_manager = USBManager()
+        audio_manager = AudioManager()
+        
+        # Get initial device list
+        initial_devices = usb_manager.get_current_devices()
+        logger.info(f"Initial devices: {initial_devices}")
+        
+        # Main monitoring loop
+        while True:
+            try:
+                # Get current devices
+                current_devices = usb_manager.get_current_devices()
+                
+                # Check for device changes
+                if current_devices != initial_devices:
+                    logger.info(f"Device change detected: {current_devices}")
+                    
+                    # Check if dock is connected
+                    if usb_manager.is_device_present(config.dock_device[0]):
+                        logger.info("Docking station connected")
+                        on_docked(config, audio_manager)
+                    else:
+                        logger.info("Docking station disconnected")
+                        on_undocked(config, audio_manager)
+                    
+                    # Update initial devices
+                    initial_devices = current_devices
+                
+                time.sleep(1)
+                
+            except Exception as e:
+                logger.error(f"Error in main loop: {e}")
+                time.sleep(5)
+                
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
+    finally:
+        # Ensure child process is terminated
+        cleanup_child_process()
 
 @click.group(invoke_without_command=True)
 @click.pass_context
@@ -163,8 +258,7 @@ def cli(ctx):
     """Main command group"""
     if ctx.invoked_subcommand is None:
         try:
-            config = load_config('config.yml')
-            main_loop(config)
+            main()
         except Exception as e:
             logger.error(f"Critical error: {e}")
             sys.exit(1)
@@ -297,15 +391,38 @@ def install_files():
                 logger.error(f"File not found: {file}")
                 raise FileNotFoundError(f"File not found: {file}")
 
-        # Copy executable
-        if getattr(sys, 'frozen', False):
-            exe_src = sys.executable
-            try:
-                shutil.copy2(exe_src, 'pydockmonitor.exe')
-                logger.info("Copied executable file")
-            except PermissionError:
-                logger.error("No access to executable file")
-                raise
+        # Copy non-console version
+        if is_console_version():
+            non_console_exe = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pydockmonitor.exe')
+            if os.path.exists(non_console_exe):
+                try:
+                    shutil.copy2(non_console_exe, 'pydockmonitor.exe')
+                    logger.info("Copied non-console version")
+                except PermissionError:
+                    logger.error("No access to non-console executable")
+                    raise
+            else:
+                logger.error("Non-console executable not found")
+                raise FileNotFoundError("Non-console executable not found")
+            
+            # Copy console version itself
+            if getattr(sys, 'frozen', False):
+                # Если мы запущены как скомпилированный exe
+                console_exe = sys.executable
+            else:
+                # Если мы запущены как Python скрипт
+                console_exe = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pydockmonitor_console.exe')
+            
+            if os.path.exists(console_exe):
+                try:
+                    shutil.copy2(console_exe, 'pydockmonitor_console.exe')
+                    logger.info("Copied console version")
+                except PermissionError:
+                    logger.error("No access to console executable")
+                    raise
+            else:
+                logger.error("Console executable not found")
+                raise FileNotFoundError("Console executable not found")
 
         # Create configuration file if it doesn't exist or if existing is invalid
         if not existing_config and not os.path.exists('config.yml'):
@@ -340,7 +457,7 @@ def install_scheduled_task():
     try:
         # Define paths
         app_dir = os.path.join(os.getenv('APPDATA'), 'dock_monitor')
-        exe_path = os.path.join(app_dir, 'pydockmonitor.exe')
+        exe_path = os.path.join(app_dir, 'pydockmonitor.exe')  # Используем неконсольную версию
         
         # Create task XML
         task_xml = f"""<?xml version="1.0" encoding="UTF-16"?>
