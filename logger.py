@@ -5,22 +5,22 @@ from pathlib import Path
 
 def setup_logger(log_dir: str = "logs") -> logging.Logger:
     """
-    Настройка логгера с ротацией файлов и форматированием
+    Setup logger with file rotation and formatting
     """
-    # Создаем директорию для логов если её нет
+    # Create logs directory if it doesn't exist
     Path(log_dir).mkdir(parents=True, exist_ok=True)
     
-    # Создаем логгер
+    # Create logger
     logger = logging.getLogger("PyDockMonitor")
     logger.setLevel(logging.DEBUG)
     
-    # Форматтер для логов
+    # Log formatter
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     
-    # Хендлер для файла с ротацией
+    # File handler with rotation
     file_handler = RotatingFileHandler(
         os.path.join(log_dir, "pydockmonitor.log"),
         maxBytes=5*1024*1024,  # 5MB
@@ -30,12 +30,12 @@ def setup_logger(log_dir: str = "logs") -> logging.Logger:
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
     
-    # Хендлер для консоли
+    # Console handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
     
-    # Добавляем хендлеры к логгеру
+    # Add handlers to logger
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
     

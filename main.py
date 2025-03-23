@@ -21,10 +21,10 @@ from logger import setup_logger
 from usb_manager import USBManager
 from audio_manager import AudioManager
 
-# Настройка логгера
+# Setup logger
 logger = setup_logger()
 
-# Определяем путь установки и меняем рабочую директорию
+# Define installation path and change working directory
 app_dir = os.path.join(os.getenv('APPDATA'), 'dock_monitor')
 os.makedirs(app_dir, exist_ok=True)
 os.chdir(app_dir)
@@ -39,80 +39,80 @@ class Config(BaseSettings):
     reset_resolution: bool = False
 
 def reset_resolution():
-    """Сброс разрешения экрана"""
+    """Reset screen resolution"""
     try:
         primary_monitor = next(x for x in get_monitors() if x.is_primary)
         original_width, original_height = primary_monitor.width, primary_monitor.height
 
-        # Исправление для Windows 11: потеря позиций окон после отключения монитора
+        # Fix for Windows 11: window positions lost after monitor disconnect
         shell = win32.gencache.EnsureDispatch('Shell.Application')
         shell.ToggleDesktop()
 
         devmode = pywintypes.DEVMODEType()
         devmode.Fields = win32con.DM_PELSWIDTH | win32con.DM_PELSHEIGHT
 
-        # Сброс на временное разрешение
+        # Reset to temporary resolution
         temp_width, temp_height = 1280, 1024
         devmode.PelsWidth, devmode.PelsHeight = temp_width, temp_height
         win32api.ChangeDisplaySettings(devmode, 0)
-        logger.debug(f"Установлено временное разрешение {temp_width}x{temp_height}")
+        logger.debug(f"Set temporary resolution to {temp_width}x{temp_height}")
         time.sleep(2)
 
-        # Возврат к исходному разрешению
+        # Restore original resolution
         devmode.PelsWidth, devmode.PelsHeight = original_width, original_height
         win32api.ChangeDisplaySettings(devmode, 0)
-        logger.debug(f"Разрешение восстановлено до {original_width}x{original_height}")
+        logger.debug(f"Resolution restored to {original_width}x{original_height}")
 
         shell.ToggleDesktop()
-        logger.debug("Сброс разрешения успешно завершен")
+        logger.debug("Resolution reset completed successfully")
     except Exception as e:
-        logger.error(f"Ошибка при сбросе разрешения: {str(e)}")
+        logger.error(f"Error resetting resolution: {str(e)}")
 
 def load_config(config_path: str) -> Config:
-    """Загрузка конфигурации"""
+    """Load configuration"""
     try:
         if not os.path.exists(config_path):
             shutil.copy('config.yml.example', config_path)
-            raise FileNotFoundError(f"Создан новый конфигурационный файл: {config_path}")
+            raise FileNotFoundError(f"Created new configuration file: {config_path}")
             
         with open(config_path) as cfile:
             cfg = yaml.safe_load(cfile)
         return Config.model_validate(cfg)
     except Exception as e:
-        logger.error(f"Ошибка при загрузке конфигурации: {e}")
+        logger.error(f"Error loading configuration: {e}")
         raise
 
 def on_docked(config: Config, audio_manager: AudioManager):
-    """Обработка подключения док-станции"""
-    logger.info("Обнаружено подключение док-станции")
+    """Handle docking station connection"""
+    logger.info("Docking station connection detected")
     
-    # Перезапуск устройств
+    # Restart devices
     for device in config.restart_devices:
-        logger.info(f'Перезапуск устройства {device}')
+        logger.info(f'Restarting device {device}')
         try:
             subprocess.run(f'pnputil /restart-device "{device}"', shell=True, check=True)
         except subprocess.CalledProcessError as e:
-            logger.error(f"Ошибка при перезапуске устройства {device}: {e}")
+            logger.error(f"Error restarting device {device}: {e}")
 
-    # Загрузка профиля звука
+    # Load audio profile
     if not audio_manager.load_profile('docked_profile.spr'):
-        logger.error("Не удалось загрузить профиль для док-станции")
+        logger.error("Failed to load docking station audio profile")
 
 def on_undocked(config: Config, audio_manager: AudioManager):
-    """Обработка отключения док-станции"""
-    logger.info("Обнаружено отключение док-станции")
+    """Handle docking station disconnection"""
+    logger.info("Docking station disconnection detected")
     
-    # Загрузка профиля звука
+    # Load audio profile
     if not audio_manager.load_profile('undocked_profile.spr'):
-        logger.error("Не удалось загрузить профиль для автономного режима")
+        logger.error("Failed to load standalone mode audio profile")
     
-    # Сброс разрешения если требуется
+    # Reset resolution if required
     if config.reset_resolution:
         reset_resolution()
 
 def main_loop(config: Config):
-    """Основной цикл программы"""
-    logger.info("Запуск мониторинга USB-устройств")
+    """Main program loop"""
+    logger.info("Starting USB device monitoring")
     
     usb_manager = USBManager()
     audio_manager = AudioManager()
@@ -131,20 +131,20 @@ def main_loop(config: Config):
                 continue
 
             if not first_run:
-                logger.debug("Изменен список устройств")
+                logger.debug("Device list changed")
                 removed = dev_list_before - dev_list_current
                 added = dev_list_current - dev_list_before
-                logger.debug(f"Удалены: {removed}")
-                logger.debug(f"Добавлены: {added}")
+                logger.debug(f"Removed: {removed}")
+                logger.debug(f"Added: {added}")
 
             docked_dev_status = dock_devices.intersection(dev_list_current)
-            logger.debug(f"Статус док-устройств: {docked_dev_status}")
+            logger.debug(f"Dock device status: {docked_dev_status}")
             docked = bool(docked_dev_status)
 
             if docked_before != docked or first_run:
-                logger.info("Изменено состояние док-станции")
+                logger.info("Docking station state changed")
                 if docked:
-                    time.sleep(10)  # Даем время на инициализацию устройств
+                    time.sleep(10)  # Give time for device initialization
                     on_docked(config, audio_manager)
                 else:
                     on_undocked(config, audio_manager)
@@ -154,52 +154,52 @@ def main_loop(config: Config):
             first_run = False
             
         except Exception as e:
-            logger.error(f"Ошибка в основном цикле: {e}")
-            time.sleep(5)  # Пауза перед повторной попыткой
+            logger.error(f"Error in main loop: {e}")
+            time.sleep(5)  # Pause before retry
 
 @click.group(invoke_without_command=True)
 @click.pass_context
 def cli(ctx):
-    """Главная группа команд"""
+    """Main command group"""
     if ctx.invoked_subcommand is None:
         try:
             config = load_config('config.yml')
             main_loop(config)
         except Exception as e:
-            logger.error(f"Критическая ошибка: {e}")
+            logger.error(f"Critical error: {e}")
             sys.exit(1)
 
 @cli.command()
 def detect():
-    """Определение и настройка устройств док-станции"""
+    """Detect and configure docking station devices"""
     usb_manager = USBManager()
     audio_manager = AudioManager()
     
-    click.echo("Подключите док-станцию и нажмите Enter")
+    click.echo("Connect the docking station and press Enter")
     click.getchar()
     docked = usb_manager.get_current_devices()
     
-    click.echo("Отключите док-станцию и нажмите Enter")
+    click.echo("Disconnect the docking station and press Enter")
     click.getchar()
     undocked = usb_manager.get_current_devices()
     
     difference = list(docked - undocked)
-    logger.info(f"Обнаружены устройства док-станции: {difference}")
+    logger.info(f"Docking station devices detected: {difference}")
     
-    click.echo("Настройте звук для режима док-станции и нажмите Enter")
+    click.echo("Configure audio for docking station mode and press Enter")
     input()
     if not audio_manager.save_profile("docked_profile.spr"):
-        logger.error("Не удалось сохранить профиль для док-станции")
+        logger.error("Failed to save docking station audio profile")
         return
     
-    click.echo("Настройте звук для автономного режима и нажмите Enter")
+    click.echo("Configure audio for standalone mode and press Enter")
     input()
     if not audio_manager.save_profile("undocked_profile.spr"):
-        logger.error("Не удалось сохранить профиль для автономного режима")
+        logger.error("Failed to save standalone mode audio profile")
         return
 
 def is_task_running(task_name):
-    """Проверяет, запущена ли задача"""
+    """Check if task is running"""
     try:
         result = subprocess.run(
             f'schtasks /Query /TN "{task_name}"', 
@@ -213,13 +213,13 @@ def is_task_running(task_name):
 
 @retry(stop_max_attempt_number=10, wait_fixed=1000)
 def wait_for_task_stop():
-    """Ждет остановки задачи"""
+    """Wait for task to stop"""
     if is_task_running("PyDockMonitor"):
         raise Exception("Task is still running")
     return True
 
 def get_other_pydockmonitor_processes():
-    """Получает список процессов pydockmonitor.exe, кроме текущего"""
+    """Get list of pydockmonitor.exe processes except current one"""
     current_pid = os.getpid()
     processes = []
     for proc in psutil.process_iter(['pid', 'name']):
@@ -231,120 +231,118 @@ def get_other_pydockmonitor_processes():
     return processes
 
 def install_files():
-    """Установка файлов программы"""
+    """Install program files"""
     try:
-        # Определяем пути установки
+        # Define installation paths
         app_dir = os.path.join(os.getenv('APPDATA'), 'dock_monitor')
         os.makedirs(app_dir, exist_ok=True)
 
-        # Проверяем, запущена ли задача
+        # Check if task is running
         if is_task_running("PyDockMonitor"):
             try:
                 subprocess.run('schtasks /End /TN PyDockMonitor', shell=True, check=True)
-                logger.info("Запрошена остановка существующей задачи")
+                logger.info("Requested stop of existing task")
                 wait_for_task_stop()
-                logger.info("Задача успешно остановлена")
+                logger.info("Task stopped successfully")
             except subprocess.CalledProcessError as e:
-                logger.error(f"Ошибка при остановке задачи: {e}")
+                logger.error(f"Error stopping task: {e}")
             except Exception as e:
-                logger.error(f"Ошибка при ожидании остановки задачи: {e}")
+                logger.error(f"Error waiting for task to stop: {e}")
 
-        # Проверяем другие запущенные процессы
+        # Check other running processes
         other_processes = get_other_pydockmonitor_processes()
         for proc in other_processes:
             try:
                 proc.terminate()
                 try:
-                    proc.wait(timeout=3)  # Ждем завершения процесса
+                    proc.wait(timeout=3)  # Wait for process to finish
                 except psutil.TimeoutExpired:
-                    proc.kill()  # Если процесс не завершился, убиваем его
-                logger.info(f"Завершен процесс pydockmonitor.exe (PID: {proc.pid})")
+                    proc.kill()  # Kill process if it doesn't finish
+                logger.info(f"Terminated pydockmonitor.exe process (PID: {proc.pid})")
             except psutil.NoSuchProcess:
                 pass
             except Exception as e:
-                logger.error(f"Ошибка при завершении процесса {proc.pid}: {e}")
+                logger.error(f"Error terminating process {proc.pid}: {e}")
 
-        # Проверяем существующий config.yml
+        # Check existing config.yml
         existing_config = None
         if os.path.exists('config.yml'):
             try:
                 with open('config.yml') as cfile:
                     existing_config = yaml.safe_load(cfile)
                 Config.model_validate(existing_config)
-                logger.info("Существующий config.yml успешно загружен")
+                logger.info("Existing config.yml loaded successfully")
             except Exception as e:
-                logger.error(f"Ошибка при загрузке существующего config.yml: {e}")
+                logger.error(f"Error loading existing config.yml: {e}")
                 existing_config = None
 
-        # Список файлов для копирования
+        # List of files to copy
         files_to_copy = [
             'SoundVolumeView.exe',
             'libusb-1.0.dll',
-            'config.yml.example',
-            'docked_profile.spr',
-            'undocked_profile.spr'
+            'config.yml.example'
         ]
 
-        # Копируем файлы
+        # Copy files
         for file in files_to_copy:
             src = os.path.join(os.path.dirname(os.path.abspath(__file__)), file)
             if os.path.exists(src):
                 try:
                     shutil.copy2(src, file)
-                    logger.info(f"Скопирован файл: {file}")
+                    logger.info(f"Copied file: {file}")
                 except PermissionError:
-                    logger.error(f"Нет доступа к файлу: {file}")
+                    logger.error(f"No access to file: {file}")
                     raise
             else:
-                logger.error(f"Файл не найден: {file}")
-                raise FileNotFoundError(f"Файл не найден: {file}")
+                logger.error(f"File not found: {file}")
+                raise FileNotFoundError(f"File not found: {file}")
 
-        # Копируем исполняемый файл
+        # Copy executable
         if getattr(sys, 'frozen', False):
             exe_src = sys.executable
             try:
                 shutil.copy2(exe_src, 'pydockmonitor.exe')
-                logger.info("Скопирован исполняемый файл")
+                logger.info("Copied executable file")
             except PermissionError:
-                logger.error("Нет доступа к исполняемому файлу")
+                logger.error("No access to executable file")
                 raise
 
-        # Создаем конфигурационный файл если его нет или если существующий невалиден
+        # Create configuration file if it doesn't exist or if existing is invalid
         if not existing_config and not os.path.exists('config.yml'):
             shutil.copy2('config.yml.example', 'config.yml')
-            logger.info("Создан конфигурационный файл")
+            logger.info("Created configuration file")
 
         return app_dir
     except Exception as e:
-        logger.error(f"Ошибка при установке файлов: {e}")
+        logger.error(f"Error installing files: {e}")
         raise
 
 @cli.command()
 def install():
-    """Установка программы"""
+    """Install the program"""
     try:
-        # Устанавливаем файлы
+        # Install files
         app_dir = install_files()
-        logger.info("Файлы успешно установлены")
+        logger.info("Files installed successfully")
 
-        # Устанавливаем задачу в планировщик
+        # Install scheduled task
         install_scheduled_task()
-        logger.info("Задача успешно добавлена в планировщик")
+        logger.info("Task added to scheduler successfully")
 
-        click.echo("Установка успешно завершена")
+        click.echo("Installation completed successfully")
     except Exception as e:
-        logger.error(f"Ошибка при установке: {e}")
-        click.echo(f"Ошибка при установке: {e}", err=True)
+        logger.error(f"Installation error: {e}")
+        click.echo(f"Installation error: {e}", err=True)
         sys.exit(1)
 
 def install_scheduled_task():
-    """Установка задачи в планировщике Windows"""
+    """Install Windows scheduled task"""
     try:
-        # Определяем пути
+        # Define paths
         app_dir = os.path.join(os.getenv('APPDATA'), 'dock_monitor')
         exe_path = os.path.join(app_dir, 'pydockmonitor.exe')
         
-        # Создаем XML для задачи
+        # Create task XML
         task_xml = f"""<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <Triggers>
@@ -382,25 +380,25 @@ def install_scheduled_task():
   </Actions>
 </Task>"""
 
-        # Сохраняем XML во временный файл
+        # Save XML to temporary file
         task_xml_path = os.path.join(app_dir, 'task.xml')
         with open(task_xml_path, 'w', encoding='utf-16') as f:
             f.write(task_xml)
         
-        # Создаем задачу через XML
+        # Create task via XML
         cmd = f'schtasks /Create /TN PyDockMonitor /XML "{task_xml_path}" /F'
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         
-        # Удаляем временный XML файл
+        # Remove temporary XML file
         os.remove(task_xml_path)
         
         if result.returncode != 0:
-            logger.error(f"Ошибка при создании задачи: {result.stderr}")
-            raise Exception(f"Ошибка при создании задачи: {result.stderr}")
+            logger.error(f"Error creating task: {result.stderr}")
+            raise Exception(f"Error creating task: {result.stderr}")
 
-        logger.info("Задача успешно создана в планировщике")
+        logger.info("Task created successfully in scheduler")
     except Exception as e:
-        logger.error(f"Ошибка при создании задачи: {e}")
+        logger.error(f"Error creating task: {e}")
         raise
 
 if __name__ == '__main__':

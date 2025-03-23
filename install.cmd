@@ -24,8 +24,7 @@ copy /Y "dist\PyDockMonitor.exe" "%INSTALL_DIR%"
 copy /Y "SoundVolumeView.exe" "%INSTALL_DIR%"
 copy /Y "libusb-1.0.dll" "%INSTALL_DIR%"
 copy /Y "config.yml.example" "%INSTALL_DIR%"
-copy /Y "docked_profile.spr" "%INSTALL_DIR%"
-copy /Y "undocked_profile.spr" "%INSTALL_DIR%"
+
 
 REM Создаем конфиг, если его нет
 if not exist "%INSTALL_DIR%\config.yml" (

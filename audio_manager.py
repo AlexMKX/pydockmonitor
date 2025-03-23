@@ -11,17 +11,17 @@ class AudioManager:
         self._check_sound_volume_view()
     
     def _check_sound_volume_view(self) -> bool:
-        """Проверка наличия SoundVolumeView.exe"""
+        """Check if SoundVolumeView.exe exists"""
         if not Path(self.sound_volume_view).exists():
-            logger.error(f"SoundVolumeView.exe не найден по пути: {self.sound_volume_view}")
+            logger.error(f"SoundVolumeView.exe not found at: {self.sound_volume_view}")
             return False
         return True
     
     def load_profile(self, profile_path: str) -> bool:
-        """Загрузка профиля звука"""
+        """Load audio profile"""
         try:
             if not Path(profile_path).exists():
-                logger.error(f"Профиль не найден: {profile_path}")
+                logger.error(f"Profile not found: {profile_path}")
                 return False
                 
             result = subprocess.run(
@@ -31,18 +31,18 @@ class AudioManager:
             )
             
             if result.returncode != 0:
-                logger.error(f"Ошибка загрузки профиля: {result.stderr}")
+                logger.error(f"Error loading profile: {result.stderr}")
                 return False
                 
-            logger.info(f"Профиль успешно загружен: {profile_path}")
+            logger.info(f"Profile successfully loaded: {profile_path}")
             return True
             
         except Exception as e:
-            logger.error(f"Ошибка при загрузке профиля {profile_path}: {e}")
+            logger.error(f"Error loading profile {profile_path}: {e}")
             return False
     
     def save_profile(self, profile_path: str) -> bool:
-        """Сохранение профиля звука"""
+        """Save audio profile"""
         try:
             result = subprocess.run(
                 [self.sound_volume_view, "/SaveProfile", profile_path],
@@ -51,18 +51,18 @@ class AudioManager:
             )
             
             if result.returncode != 0:
-                logger.error(f"Ошибка сохранения профиля: {result.stderr}")
+                logger.error(f"Error saving profile: {result.stderr}")
                 return False
                 
-            logger.info(f"Профиль успешно сохранен: {profile_path}")
+            logger.info(f"Profile successfully saved: {profile_path}")
             return True
             
         except Exception as e:
-            logger.error(f"Ошибка при сохранении профиля {profile_path}: {e}")
+            logger.error(f"Error saving profile {profile_path}: {e}")
             return False
     
     def list_audio_devices(self) -> Optional[list]:
-        """Получение списка аудио-устройств"""
+        """Get list of audio devices"""
         try:
             result = subprocess.run(
                 [self.sound_volume_view, "/scomma", "devices.txt"],
@@ -71,7 +71,7 @@ class AudioManager:
             )
             
             if result.returncode != 0:
-                logger.error(f"Ошибка получения списка устройств: {result.stderr}")
+                logger.error(f"Error getting device list: {result.stderr}")
                 return None
                 
             with open("devices.txt", "r", encoding="utf-8") as f:
@@ -81,5 +81,5 @@ class AudioManager:
             return devices
             
         except Exception as e:
-            logger.error(f"Ошибка при получении списка аудио-устройств: {e}")
+            logger.error(f"Error getting audio device list: {e}")
             return None 

@@ -13,8 +13,6 @@ required_files=(
     "SoundVolumeView.exe"
     "libusb-1.0.dll"
     "config.yml.example"
-    "docked_profile.spr"
-    "undocked_profile.spr"
 )
 
 for file in "${required_files[@]}"; do
