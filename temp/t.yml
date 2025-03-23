@@ -1,0 +1,49 @@
+substitutions:
+  devicename: int-1f-kitchen-switch-2
+esphome:
+  name: $devicename
+esp8266:
+  restore_from_flash: true
+  board: esp8285
+
+wifi:
+  ssid: "devices"
+  password: "kney-hoy-wub-e1"
+  domain: ".h.xxl.cx"
+  fast_connect: true
+
+  ap:
+    ssid: $devicename
+    password: "ysZ1sloON0AL"
+    ap_timeout: 5min
+
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "C1TUOdcCuTvDg4VOLXvZfBBesmHrzya7bmGWtbKLKS4="
+
+ota:
+  password: "!U@IEJDHaa"
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: True
+    name: "${devicename}-button"
+output:
+  - platform: gpio
+    id: "workzone"
+    pin: GPIO12
+
+light:
+  - platform: binary
+    output: workzone
+    name: "Workzone"
