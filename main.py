@@ -350,16 +350,26 @@ def install_scheduled_task():
       <Enabled>true</Enabled>
       <UserId>{os.getenv('USERNAME')}</UserId>
     </LogonTrigger>
+    <CalendarTrigger>
+      <Enabled>true</Enabled>
+      <StartBoundary>2025-01-01T00:00:00</StartBoundary>
+      <ScheduleByDay>
+        <DaysInterval>1</DaysInterval>
+      </ScheduleByDay>
+      <Repetition>
+        <Interval>PT5M</Interval>
+      </Repetition>
+    </CalendarTrigger>
   </Triggers>
   <Settings>
     <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
     <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
     <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
     <AllowHardTerminate>true</AllowHardTerminate>
-    <StartWhenAvailable>false</StartWhenAvailable>
+    <StartWhenAvailable>true</StartWhenAvailable>
     <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
     <IdleSettings>
-      <StopOnIdleEnd>true</StopOnIdleEnd>
+      <StopOnIdleEnd>false</StopOnIdleEnd>
       <RestartOnIdle>false</RestartOnIdle>
     </IdleSettings>
     <AllowStartOnDemand>true</AllowStartOnDemand>

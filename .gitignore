@@ -12,7 +12,6 @@ ENV/
 build/
 dist/
 *.spec
-!PyDockMonitor.spec
 
 # IDE
 .idea/
