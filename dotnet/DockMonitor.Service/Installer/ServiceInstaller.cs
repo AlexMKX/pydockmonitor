@@ -40,8 +40,9 @@ public static class ServiceInstaller
         RunSc($"description {ServiceName} \"Monitors docking station and manages audio profiles\"");
         RunSc($"failure {ServiceName} reset= 0 actions= restart/5000/restart/5000/restart/5000");
         RunSc($"failureflag {ServiceName} 1");
+        RunSc($"start {ServiceName}");
 
-        Console.WriteLine("Service installed.");
+        Console.WriteLine("Service installed and started.");
         return Task.FromResult(0);
     }
 
