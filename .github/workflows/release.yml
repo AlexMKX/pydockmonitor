@@ -6,6 +6,9 @@ on:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -18,11 +21,19 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Generate version
+        id: version
+        shell: pwsh
+        run: |
+          $ver = Get-Date -Format "yyMMddHHmm"
+          echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
+          echo "Version: $ver"
+
       - name: Restore
-        run: dotnet restore dotnet/DockMonitor.Service/DockMonitor.Service.csproj
+        run: dotnet restore dotnet/DockMonitor.sln
 
       - name: Build
-        run: dotnet build dotnet/DockMonitor.Service/DockMonitor.Service.csproj -c Release --no-restore
+        run: dotnet build dotnet/DockMonitor.sln -c Release --no-restore
 
       - name: Test
         run: dotnet test dotnet/DockMonitor.Tests/DockMonitor.Tests.csproj -c Release --no-restore
@@ -43,8 +54,9 @@ jobs:
           path: publish/DockMonitor.Service.exe
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: Release ${{ steps.version.outputs.VERSION }}
           files: publish/DockMonitor.Service.exe
           generate_release_notes: true
