@@ -18,6 +18,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\SoundVolumeView.exe" Condition="Exists('..\..\SoundVolumeView.exe')" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Resources\SoundVolumeView.exe" LogicalName="SoundVolumeView.exe" />
   </ItemGroup>
 </Project>

@@ -33,6 +33,8 @@ public static class ServiceInstaller
         File.Copy(currentExe, targetExe, overwrite: true);
         Console.WriteLine($"Copied {exeName} -> {AppPaths.DataDir}");
 
+        ExtractResource("SoundVolumeView.exe", Path.Combine(AppPaths.DataDir, "SoundVolumeView.exe"));
+
         var binPath = $"\"\\\"{targetExe}\\\" run\"";
         RunSc($"create {ServiceName} binPath= {binPath} start= auto DisplayName= \"{DisplayName}\"");
         RunSc($"description {ServiceName} \"Monitors docking station and manages audio profiles\"");
@@ -56,6 +58,20 @@ public static class ServiceInstaller
 
         Console.WriteLine("Service uninstalled.");
         return Task.FromResult(0);
+    }
+
+    private static void ExtractResource(string resourceName, string targetPath)
+    {
+        using var stream = typeof(ServiceInstaller).Assembly.GetManifestResourceStream(resourceName);
+        if (stream is null)
+        {
+            Console.Error.WriteLine($"Embedded resource '{resourceName}' not found, skipping.");
+            return;
+        }
+
+        using var fs = File.Create(targetPath);
+        stream.CopyTo(fs);
+        Console.WriteLine($"Extracted {resourceName} -> {targetPath}");
     }
 
     private static void RunSc(string args)

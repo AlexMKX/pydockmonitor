@@ -47,7 +47,7 @@ build.sh
 build.rs
 setup-rust-project.cmd
 libusb-1.0.dll
-SoundVolumeView.exe
+/SoundVolumeView.exe
 assets/
 installer/
 doc/
