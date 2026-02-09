@@ -26,7 +26,7 @@ logs/
 .env
 .env.local
 
-# Legacy (Python/Rust)
+# Legacy (Python/Rust/Docker) — files left on disk from previous implementations
 __pycache__/
 .venv/
 venv/
@@ -37,3 +37,17 @@ dist/
 Cargo.lock
 Cargo.toml
 target/
+Dockerfile
+.dockerignore
+*.py
+requirements.txt
+config.yml.example
+build.cmd
+build.sh
+build.rs
+setup-rust-project.cmd
+libusb-1.0.dll
+SoundVolumeView.exe
+assets/
+installer/
+doc/
