@@ -1,23 +1,22 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-.venv/
-venv/
-ENV/
-
-# PyInstaller
-build/
-dist/
-*.spec
+# .NET
+**/bin/
+**/obj/
+artifacts/
 
 # IDE
 .idea/
 .vscode/
+.cursor/
 *.swp
 *.swo
+*.user
+*.suo
+*.DotSettings.user
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
 
 # Logs
 logs/
@@ -26,4 +25,15 @@ logs/
 # Local development
 .env
 .env.local
-.env.*.local
+
+# Legacy (Python/Rust)
+__pycache__/
+.venv/
+venv/
+build/
+dist/
+*.spec
+*.pyc
+Cargo.lock
+Cargo.toml
+target/
