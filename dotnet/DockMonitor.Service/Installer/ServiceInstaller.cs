@@ -27,46 +27,11 @@ public static class ServiceInstaller
             return Task.FromResult(2);
         }
 
-        var sourceDir = Path.GetDirectoryName(currentExe);
-        if (string.IsNullOrWhiteSpace(sourceDir) || !Directory.Exists(sourceDir))
-        {
-            Console.Error.WriteLine("Cannot determine current executable directory.");
-            return Task.FromResult(2);
-        }
-
         var exeName = Path.GetFileName(currentExe);
         var targetExe = Path.Combine(AppPaths.DataDir, exeName);
-        foreach (var file in Directory.EnumerateFiles(sourceDir))
-        {
-            if (string.Equals(file, currentExe, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var name = Path.GetFileName(file);
-            if (name.EndsWith(".pdb", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var dest = Path.Combine(AppPaths.DataDir, name);
-            File.Copy(file, dest, overwrite: true);
-        }
-
-        var runtimesDir = Path.Combine(sourceDir, "runtimes");
-        if (Directory.Exists(runtimesDir))
-        {
-            CopyDirectory(runtimesDir, Path.Combine(AppPaths.DataDir, "runtimes"));
-        }
 
         File.Copy(currentExe, targetExe, overwrite: true);
-
-        var svvSource = Path.Combine(AppContext.BaseDirectory, "SoundVolumeView.exe");
-        if (File.Exists(svvSource))
-        {
-            var svvTarget = Path.Combine(AppPaths.DataDir, "SoundVolumeView.exe");
-            File.Copy(svvSource, svvTarget, overwrite: true);
-        }
+        Console.WriteLine($"Copied {exeName} -> {AppPaths.DataDir}");
 
         var binPath = $"\"\\\"{targetExe}\\\" run\"";
         RunSc($"create {ServiceName} binPath= {binPath} start= auto DisplayName= \"{DisplayName}\"");
@@ -130,21 +95,4 @@ public static class ServiceInstaller
         }
     }
 
-    private static void CopyDirectory(string sourceDir, string destinationDir)
-    {
-        Directory.CreateDirectory(destinationDir);
-
-        foreach (var file in Directory.EnumerateFiles(sourceDir))
-        {
-            var name = Path.GetFileName(file);
-            var dest = Path.Combine(destinationDir, name);
-            File.Copy(file, dest, overwrite: true);
-        }
-
-        foreach (var dir in Directory.EnumerateDirectories(sourceDir))
-        {
-            var name = Path.GetFileName(dir);
-            CopyDirectory(dir, Path.Combine(destinationDir, name));
-        }
-    }
 }
