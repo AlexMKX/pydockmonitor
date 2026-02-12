@@ -5,14 +5,14 @@ namespace DockMonitor.Service.Actions;
 public sealed class DockActions
 {
     private readonly DeviceRestarter _deviceRestarter;
-    private readonly AudioProfileManager _audio;
+    private readonly AudioDeviceSwitcher _audio;
     private readonly DisplayManager _display;
     private readonly BluetoothConnector _btConnector;
     private readonly ILogger<DockActions> _logger;
 
     public DockActions(
         DeviceRestarter deviceRestarter,
-        AudioProfileManager audio,
+        AudioDeviceSwitcher audio,
         DisplayManager display,
         BluetoothConnector btConnector,
         ILogger<DockActions> logger)
@@ -49,16 +49,39 @@ public sealed class DockActions
 
     private async Task ApplyProfileAsync(ProfileConfig profile, string name, CancellationToken ct)
     {
-        if (!string.IsNullOrWhiteSpace(profile.AudioProfile))
+        // Bluetooth first — devices must appear before we can set them as default audio
+        var btConnected = false;
+        foreach (var mac in profile.BluetoothConnect)
         {
             try
             {
-                _logger.LogInformation("[{Profile}] Loading audio profile: {AudioProfile}", name, profile.AudioProfile);
-                await _audio.LoadProfileAsync(profile.AudioProfile!, ct);
+                _logger.LogInformation("[{Profile}] Connecting Bluetooth device: {Mac}", name, mac);
+                _btConnector.Connect(mac);
+                btConnected = true;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[{Profile}] Failed to load audio profile", name);
+                _logger.LogWarning(ex, "[{Profile}] Failed to connect Bluetooth device: {Mac}", name, mac);
+            }
+        }
+
+        // Give BT audio endpoints time to register in the system
+        if (btConnected && profile.Audio is not null)
+        {
+            _logger.LogDebug("[{Profile}] Waiting for Bluetooth audio endpoints to appear...", name);
+            await Task.Delay(3000, ct);
+        }
+
+        if (profile.Audio is not null)
+        {
+            try
+            {
+                _logger.LogInformation("[{Profile}] Applying audio configuration", name);
+                _audio.ApplyAudioConfig(profile.Audio);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[{Profile}] Failed to apply audio configuration", name);
             }
         }
 
@@ -76,19 +99,6 @@ public sealed class DockActions
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "[{Profile}] Failed to reset resolution", name);
-            }
-        }
-
-        foreach (var mac in profile.BluetoothConnect)
-        {
-            try
-            {
-                _logger.LogInformation("[{Profile}] Connecting Bluetooth device: {Mac}", name, mac);
-                _btConnector.Connect(mac);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "[{Profile}] Failed to connect Bluetooth device: {Mac}", name, mac);
             }
         }
     }

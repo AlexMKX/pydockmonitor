@@ -34,8 +34,6 @@ public static class ServiceInstaller
         File.Copy(currentExe, targetExe, overwrite: true);
         Console.WriteLine($"Copied {exeName} -> {AppPaths.DataDir}");
 
-        ExtractResource("SoundVolumeView.exe", Path.Combine(AppPaths.DataDir, "SoundVolumeView.exe"));
-
         var binPath = $"\"{targetExe}\" run";
 
         var scManager = NativeMethods.OpenSCManager(null, null, NativeMethods.SC_MANAGER_ALL_ACCESS);

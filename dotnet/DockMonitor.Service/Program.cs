@@ -110,7 +110,8 @@ static IHost BuildHost(string[] hostArgs, bool isInteractive)
 
     builder.Services.AddSingleton<WmiPnpDeviceEnumerator>();
     builder.Services.AddSingleton<DeviceRestarter>();
-    builder.Services.AddSingleton<AudioProfileManager>();
+    builder.Services.AddSingleton<AudioDeviceEnumerator>();
+    builder.Services.AddSingleton<AudioDeviceSwitcher>();
     builder.Services.AddSingleton<DisplayManager>();
     builder.Services.AddSingleton<BluetoothConnector>();
     builder.Services.AddSingleton<DockActions>();

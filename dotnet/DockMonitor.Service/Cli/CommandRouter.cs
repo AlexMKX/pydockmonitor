@@ -45,6 +45,7 @@ public static class CommandRouter
             "restart-bt" => new Command.RestartBt(),
             "connect-bt" => args.Length > 1 ? new Command.ConnectBt(args[1]) : null,
             "list-bt" => new Command.ListBt(),
+            "set-audio" => new Command.SetAudio(),
             _ => null,
         };
     }
@@ -64,6 +65,7 @@ public static class CommandRouter
             Command.RestartBt => await RestartBluetoothAsync(),
             Command.ConnectBt cb => await ConnectBluetoothAsync(cb.Mac),
             Command.ListBt => ListPairedBt(),
+            Command.SetAudio => await AudioSetupWizard.RunAsync(),
             _ => 2,
         };
     }
@@ -87,6 +89,7 @@ public static class CommandRouter
         Console.WriteLine("  restart-bt     Restart Bluetooth adapter");
         Console.WriteLine("  connect-bt MAC Connect paired Bluetooth device");
         Console.WriteLine("  list-bt       List paired Bluetooth devices");
+        Console.WriteLine("  set-audio     Configure audio devices for docked/undocked profiles");
         Console.WriteLine("  help           Show this help");
         Console.WriteLine();
         Console.WriteLine($"Config: {ConfigPaths.DefaultConfigPath}");
@@ -150,7 +153,7 @@ public static class CommandRouter
     {
         return new DockActions(
             new DeviceRestarter(lf.CreateLogger<DeviceRestarter>()),
-            new AudioProfileManager(lf.CreateLogger<AudioProfileManager>()),
+            new AudioDeviceSwitcher(new AudioDeviceEnumerator(), lf.CreateLogger<AudioDeviceSwitcher>()),
             new DisplayManager(),
             new BluetoothConnector(lf.CreateLogger<BluetoothConnector>()),
             lf.CreateLogger<DockActions>());
@@ -244,4 +247,5 @@ public abstract record Command
     public sealed record RestartBt : Command;
     public sealed record ConnectBt(string Mac) : Command;
     public sealed record ListBt : Command;
+    public sealed record SetAudio : Command;
 }

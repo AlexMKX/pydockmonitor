@@ -40,10 +40,20 @@ public sealed class DockDeviceConfigTypeConverter : TypeConverter
 
 public sealed class ProfileConfig
 {
-    public string? AudioProfile { get; set; }
+    public AudioConfig? Audio { get; set; }
     public bool ResetResolution { get; set; } = false;
     public int TempWidth { get; set; } = 1280;
     public int TempHeight { get; set; } = 1024;
     public int RestoreDelayMs { get; set; } = 2000;
     public List<string> BluetoothConnect { get; set; } = new();
+}
+
+public sealed class AudioConfig
+{
+    public string? RenderDefault { get; set; }
+    public string? RenderMultimedia { get; set; }
+    public string? RenderCommunications { get; set; }
+    public string? CaptureDefault { get; set; }
+    public string? CaptureMultimedia { get; set; }
+    public string? CaptureCommunications { get; set; }
 }

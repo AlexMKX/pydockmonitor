@@ -23,12 +23,12 @@ public static class ConfigPaths
             RestartDevices = new List<string>(),
             Docked = new ProfileConfig
             {
-                AudioProfile = "docked_profile.spr",
+                Audio = new AudioConfig(),
                 BluetoothConnect = new List<string>(),
             },
             Undocked = new ProfileConfig
             {
-                AudioProfile = "undocked_profile.spr",
+                Audio = new AudioConfig(),
             },
             PollIntervalMs = 1000,
         };
