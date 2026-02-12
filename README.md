@@ -6,7 +6,7 @@ A Windows service that automatically detects docking station connect/disconnect 
 
 - **Automatic dock detection** via USB VID/PID polling (WMI)
 - **Docked / Undocked profiles** with independent actions for each state
-- **Audio profile switching** via [SoundVolumeView](https://www.nirsoft.net/utils/sound_volume_view.html)
+- **Audio device switching** by device name via Windows Core Audio COM API
 - **Display resolution reset** (workaround for Windows 11 scaling bugs)
 - **Bluetooth device reconnect** after docking (via Win32 `BluetoothSetServiceState`)
 - **Bluetooth adapter restart** via SetupDi `DICS_PROPCHANGE`
@@ -51,14 +51,24 @@ Edit `C:\ProgramData\dock-monitor\config.json`:
 
   // Actions when docked
   "Docked": {
-    "AudioProfile": "docked_profile.spr",
+    "Audio": {
+      "RenderDefault": "Creative T30 Wireless",
+      "RenderMultimedia": "Creative T30 Wireless",
+      "RenderCommunications": "Jabra SPEAK 510 USB",
+      "CaptureDefault": "Microphone Array",
+      "CaptureCommunications": "Jabra SPEAK 510 USB"
+    },
     "BluetoothConnect": ["00:02:3C:49:A0:93"],
     "ResetResolution": false
   },
 
   // Actions when undocked
   "Undocked": {
-    "AudioProfile": "undocked_profile.spr"
+    "Audio": {
+      "RenderDefault": "Realtek(R) Audio",
+      "RenderMultimedia": "Realtek(R) Audio",
+      "CaptureDefault": "Microphone Array"
+    }
   },
 
   "PollIntervalMs": 1000
@@ -87,21 +97,33 @@ DockMonitor.Service.exe install
 
 | Key                | Type   | Default | Description                                       |
 | ------------------ | ------ | ------- | ------------------------------------------------- |
-| `AudioProfile`     | string | null    | SoundVolumeView `.spr` profile file to load       |
+| `Audio`            | object | null    | Audio device assignments (see Audio Config below) |
 | `BluetoothConnect` | array  | []      | MAC addresses of BT devices to reconnect          |
 | `ResetResolution`  | bool   | false   | Temporarily change and restore display resolution |
 | `TempWidth`        | int    | 1280    | Temporary resolution width                        |
 | `TempHeight`       | int    | 1024    | Temporary resolution height                       |
 | `RestoreDelayMs`   | int    | 2000    | Delay before restoring original resolution        |
 
-### Audio Profiles
+### Audio Config (`Audio`)
 
-Audio profiles are managed by [SoundVolumeView](https://www.nirsoft.net/utils/sound_volume_view.html). Place `SoundVolumeView.exe` in the data directory (`C:\ProgramData\dock-monitor\`).
+Audio devices are matched by friendly name (case-insensitive). Each field is optional — omit or set to `null` to leave that role unchanged.
 
-1. Connect your dock, configure audio as desired
-2. Save profile: `SoundVolumeView.exe /ssaveprofile "C:\ProgramData\dock-monitor\docked_profile.spr"`
-3. Disconnect dock, configure audio
-4. Save profile: `SoundVolumeView.exe /ssaveprofile "C:\ProgramData\dock-monitor\undocked_profile.spr"`
+| Key                      | Description                              |
+| ------------------------ | ---------------------------------------- |
+| `RenderDefault`          | Default playback device (eConsole)       |
+| `RenderMultimedia`       | Multimedia playback device (eMultimedia) |
+| `RenderCommunications`   | Communications playback device           |
+| `CaptureDefault`         | Default recording device (eConsole)      |
+| `CaptureMultimedia`      | Multimedia recording device              |
+| `CaptureCommunications`  | Communications recording device          |
+
+Use the `set-audio` wizard to configure interactively:
+
+```
+DockMonitor.Service.exe set-audio
+```
+
+The wizard lists all active audio devices, then prompts you to pick devices for each role in docked and undocked profiles.
 
 ## CLI Commands
 
@@ -120,6 +142,7 @@ DockMonitor.Service.exe [command]
 | `test`           | Exit code 0 if docked, 1 if undocked                 |
 | `docked`         | Manually execute docked profile actions              |
 | `undocked`       | Manually execute undocked profile actions            |
+| `set-audio`      | Interactive audio device configuration wizard        |
 | `restart-bt`     | Restart Bluetooth adapter                            |
 | `connect-bt MAC` | Connect a paired Bluetooth device by MAC address     |
 | `help`           | Show help                                            |
@@ -130,7 +153,7 @@ DockMonitor.Service.exe [command]
 | ----------------------------------------- | ------------------------------------- |
 | `C:\ProgramData\dock-monitor\config.json` | Configuration file                    |
 | `C:\ProgramData\dock-monitor\logs\`       | Log files                             |
-| `C:\ProgramData\dock-monitor\`            | Data directory (audio profiles, etc.) |
+| `C:\ProgramData\dock-monitor\`            | Data directory                        |
 
 ## Service Management
 
